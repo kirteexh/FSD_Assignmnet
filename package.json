@@ -1,0 +1,14 @@
+{
+  "name": "fsd-idor-assignment",
+  "version": "1.0.0",
+  "description": "Full Stack Development Lab Assignment - Broken Access Control (IDOR) Vulnerability Assessment",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test": "node backend/test_idor.js",
+    "build": "npm run build --prefix frontend"
+  },
+  "keywords": ["fsd", "security", "idor", "broken-access-control", "jwt", "react", "nodejs"],
+  "author": "Kirteesh Rakshe",
+  "license": "MIT"
+}
+

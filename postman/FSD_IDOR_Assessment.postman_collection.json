@@ -1,0 +1,238 @@
+{
+  "info": {
+    "_postman_id": "7a8b9c0d-1e2f-4a3b-9c8d-7e6f5a4b3c2d",
+    "name": "FSD Lab - Broken Access Control (IDOR) Assessment",
+    "description": "Comprehensive Postman collection for testing and demonstrating Insecure Direct Object Reference (IDOR) vulnerabilities and remediation in a React & Node.js application.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login - User A (Asha Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const responseJson = pm.response.json();",
+                  "if (responseJson.token) {",
+                  "    pm.environment.set(\"user_a_token\", responseJson.token);",
+                  "    pm.environment.set(\"user_a_id\", responseJson.user.id);",
+                  "    console.log(\"User A Token stored successfully.\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"asha@test.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticates as User A (Asha Test, ID 101) and sets the JWT bearer token."
+          }
+        },
+        {
+          "name": "Login - User B (Bala Test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const responseJson = pm.response.json();",
+                  "if (responseJson.token) {",
+                  "    pm.environment.set(\"user_b_token\", responseJson.token);",
+                  "    pm.environment.set(\"user_b_id\", responseJson.user.id);",
+                  "    console.log(\"User B Token stored successfully.\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bala@test.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticates as User B (Bala Test, ID 102) to inspect User B's credentials and token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Vulnerability Assessment (Steps 4 & 5)",
+      "item": [
+        {
+          "name": "Step 4: User A Accesses Own Profile (Baseline)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_a_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/101",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "101"]
+            },
+            "description": "SCREENSHOT 4: User A accessing their own profile using User A's token. Server returns 200 OK with Asha Test's profile."
+          }
+        },
+        {
+          "name": "Step 5: IDOR Exploit - User A Accesses User B Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_a_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/102",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "102"]
+            },
+            "description": "SCREENSHOT 5: IDOR Exploit request. Keeping User A's token unchanged while changing resource ID to 102 (User B). Returns 200 OK with User B's private record (Vulnerable!)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Remediation & Retesting (Steps 7 & 8)",
+      "item": [
+        {
+          "name": "Step 7: Switch Backend to SECURE Mode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"secure\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/security-mode",
+              "host": ["{{base_url}}"],
+              "path": ["api", "security-mode"]
+            },
+            "description": "Applies the backend fix (enforces req.user.id === profile.userId ownership check)."
+          }
+        },
+        {
+          "name": "Step 8: Retest IDOR Attack After Fix (Blocked)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_a_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/102",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "102"]
+            },
+            "description": "SCREENSHOT 8: Repeating the IDOR request after the fix. The server blocks the cross-user access with 403 Forbidden!"
+          }
+        },
+        {
+          "name": "Verify User A Can Still Access Own Profile (Secure)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{user_a_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/profiles/101",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profiles", "101"]
+            },
+            "description": "Verifies that legitimate access by the resource owner still works (200 OK)."
+          }
+        },
+        {
+          "name": "Reset Backend to VULNERABLE Mode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"vulnerable\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/security-mode",
+              "host": ["{{base_url}}"],
+              "path": ["api", "security-mode"]
+            },
+            "description": "Resets the server back to vulnerable mode."
+          }
+        }
+      ]
+    }
+  ]
+}
+
